@@ -1,0 +1,5 @@
+fire
+mcp
+llama-stack
+llama-stack-client
+litellm
