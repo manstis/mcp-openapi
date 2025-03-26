@@ -19,7 +19,7 @@ from typing import List, Dict, Optional, Tuple
 def setup_logging(debug: bool = False) -> logging.Logger:
     """Set up logging with the specified debug level."""
     global logger
-    logger = logging.getLogger("mcp_openapi_proxy")
+    logger = logging.getLogger("mcp-openapi")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stderr)
         formatter = logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
@@ -37,7 +37,7 @@ spec: Optional[Dict] = None
 tools: List[types.Tool] = []
 
 def main(host: str, port: int) -> int:
-    server = Server("manstis-mcp-weather-tool")
+    server = Server("mcp-openapi")
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
@@ -276,7 +276,7 @@ async def dispatcher(name: str, arguments: dict) -> list[types.TextContent]:
 
         operation = operation_details['operation']
         operation['method'] = operation_details['method']
-        headers = handle_auth()
+        headers = handle_auth(arguments)
         additional_headers = get_additional_headers()
         headers = {**headers, **additional_headers}
         parameters = dict(strip_parameters(arguments))
@@ -322,8 +322,6 @@ async def dispatcher(name: str, arguments: dict) -> list[types.TextContent]:
                     return [types.TextContent(type="text", text=f"Missing required path parameters: {missing_required}")]
             if method == "GET":
                 request_params = parameters
-                # [manstis] Hack for NWS "Weather API" that fails if (unrecognised?) QueryString parameters are provided
-                del request_params["session_id"]
             else:
                 request_body = parameters
         else:
@@ -384,9 +382,9 @@ def get_additional_headers() -> Dict[str, str]:
     return headers
 
 
-def handle_auth() -> Dict[str, str]:
+def handle_auth(arguments: dict) -> Dict[str, str]:
     headers = {}
-    api_key = os.getenv("API_KEY")
+    api_key = arguments["__token"] if "__token" in arguments else os.getenv("API_KEY")
     auth_type = os.getenv("API_AUTH_TYPE", "Bearer").lower()
     if api_key:
         if auth_type == "bearer":
